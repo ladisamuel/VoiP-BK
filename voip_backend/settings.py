@@ -9,6 +9,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-production-min-50-chars-long-for-security")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 ALLOWED_HOSTS = ["*"]
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 INSTALLED_APPS = [
     "daphne",
@@ -18,6 +20,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "channels",
     "calls",
+    
+    "drf_spectacular",
+
 ]
 
 MIDDLEWARE = [
@@ -60,8 +65,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-if os.getenv("FRONTEND_URL"):
-    CORS_ALLOWED_ORIGINS.append(os.getenv("FRONTEND_URL"))
+
+_frontend = os.getenv("FRONTEND_URL")
+if _frontend:
+    CORS_ALLOWED_ORIGINS.append(_frontend)
+    
+# if os.getenv("FRONTEND_URL"):
+#     CORS_ALLOWED_ORIGINS.append(os.getenv("FRONTEND_URL"))
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -70,6 +80,9 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Whitenoise for static files on Render
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Twilio Configuration
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
@@ -82,4 +95,12 @@ BASE_URL = os.getenv("BASE_URL", "http:127.0.0.1:8000")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [],
     "DEFAULT_AUTHENTICATION_CLASSES": [],
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Personal VOIP API",
+    "DESCRIPTION": "Minimal single-user VOIP system using Twilio.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": r"/api/",
 }

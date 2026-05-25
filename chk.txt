@@ -1,0 +1,13 @@
+
+
+
+python -c 
+
+"import secrets,string; 
+print(
+    ''.join(
+        secrets.choice(
+            string.ascii_letters+string.digits+'!@#$%^&*(-_=+)'
+            ) for _ in range(60)
+        )
+    )"

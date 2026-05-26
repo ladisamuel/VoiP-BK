@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+import dj_database_url
 # load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,7 +22,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME", '')
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*", "https://voip-bk.onrender.com/"]
 
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -31,6 +32,7 @@ INSTALLED_APPS = [
     "daphne",
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    "django.contrib.auth",
     "rest_framework",
     "corsheaders",
     "channels",
@@ -41,7 +43,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -51,14 +56,33 @@ ROOT_URLCONF = "voip_backend.urls"
 WSGI_APPLICATION = "voip_backend.wsgi.application"
 ASGI_APPLICATION = "voip_backend.asgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
+
+if os.getenv("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.parse(os.environ["DATABASE_URL"])
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # Uncomment for PostgreSQL:
+
+# DATABASES = {
+#     "default": dj_database_url.config(
+#         default=os.environ.get("DATABASE_URL")
+#     )
+# }
+
 # DATABASES = {
 #     "default": {
 #         "ENGINE": "django.db.backends.postgresql",

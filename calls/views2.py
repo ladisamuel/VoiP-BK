@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -8,20 +9,11 @@ from asgiref.sync import async_to_sync
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from django.conf import settings
-from drf_spectacular.utils import extend_schema, OpenApiExample
 from .models import CallLog, SMSLog
-from .utils import (
-    validate_twilio_request, get_state, VOIP_GROUP, set_idle,
-    get_twilio_client, force_reset
-)
+from .utils import validate_twilio_request, get_state, VOIP_GROUP, set_idle
 from .services import create_outbound_call, handle_incoming_call, hangup_call
 
 
-@extend_schema(
-    summary="Get Twilio Access Token",
-    description="Generates a Twilio Voice SDK access token for the browser.",
-    responses={200: {"type": "object", "properties": {"token": {"type": "string"}, "identity": {"type": "string"}}}},
-)
 @api_view(["GET"])
 def get_token(request):
     identity = "user"
@@ -36,14 +28,6 @@ def get_token(request):
     return Response({"token": token.to_jwt(), "identity": identity})
 
 
-@extend_schema(
-    summary="Start Outbound Call",
-    request={"type": "object", "properties": {"to": {"type": "string"}}},
-    responses={
-        200: {"type": "object", "properties": {"approved": {"type": "boolean"}, "call_sid": {"type": "string"}}},
-        409: {"type": "object", "properties": {"approved": {"type": "boolean"}, "error": {"type": "string"}}},
-    },
-)
 @api_view(["POST"])
 def start_call(request):
     to_number = request.data.get("to")
@@ -55,10 +39,6 @@ def start_call(request):
     return Response(result, status=409)
 
 
-@extend_schema(
-    summary="End Current Call",
-    responses={200: {"type": "object", "properties": {"status": {"type": "string"}}}},
-)
 @api_view(["POST"])
 def end_call(request):
     state = get_state()
@@ -74,26 +54,6 @@ def end_call(request):
     return Response({"status": "ok"})
 
 
-@extend_schema(
-    summary="Force Reset State",
-    description="Resets system state to idle. Use if state is stuck.",
-    responses={200: {"type": "object", "properties": {"status": {"type": "string"}}}},
-)
-@api_view(["POST"])
-def reset_state(request):
-    force_reset()
-    async_to_sync(get_channel_layer().group_send)(VOIP_GROUP, {
-        "type": "voip_event",
-        "event_type": "call_ended",
-        "payload": {}
-    })
-    return Response({"status": "reset"})
-
-
-@extend_schema(
-    summary="List Call Logs",
-    responses={200: {"type": "array", "items": {"type": "object"}}},
-)
 @api_view(["GET"])
 def call_logs(request):
     logs = CallLog.objects.all()[:100]
@@ -109,10 +69,6 @@ def call_logs(request):
     return Response(data)
 
 
-@extend_schema(
-    summary="List SMS Inbox",
-    responses={200: {"type": "array", "items": {"type": "object"}}},
-)
 @api_view(["GET"])
 def sms_inbox(request):
     messages = SMSLog.objects.all()[:100]

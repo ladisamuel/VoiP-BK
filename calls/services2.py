@@ -1,10 +1,11 @@
+
 from datetime import datetime
 from django.conf import settings
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import CallLog
 from .utils import (
-    get_twilio_client, can_initiate_call, set_ringing, set_busy, set_idle,
+    twilio_client, can_initiate_call, set_ringing, set_busy, set_idle,
     get_state, set_pending_timer, VOIP_GROUP
 )
 
@@ -25,7 +26,7 @@ def create_outbound_call(to_number):
     twiml_url = f"{settings.BASE_URL}/twiml/outbound-dial?to={to_number}"
 
     try:
-        call = get_twilio_client().calls.create(
+        call = twilio_client.calls.create(
             to="client:user",
             from_=settings.TWILIO_PHONE_NUMBER,
             url=twiml_url,
@@ -74,27 +75,21 @@ def handle_incoming_call(call_sid, from_number):
     })
 
     def auto_reject():
-        try:
-            state = get_state()
-            if state.get("pending_call_sid") == call_sid:
-                try:
-                    get_twilio_client().calls(call_sid).update(status="completed")
-                except Exception:
-                    pass
-                CallLog.objects.filter(call_sid=call_sid).update(
-                    status="missed", end_time=datetime.now()
-                )
-                set_idle()
-                try:
-                    async_to_sync(channel_layer.group_send)(VOIP_GROUP, {
-                        "type": "voip_event",
-                        "event_type": "call_missed",
-                        "payload": {"call_sid": call_sid}
-                    })
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        state = get_state()
+        if state.get("pending_call_sid") == call_sid:
+            try:
+                twilio_client.calls(call_sid).update(status="completed")
+            except Exception:
+                pass
+            CallLog.objects.filter(call_sid=call_sid).update(
+                status="missed", end_time=datetime.now()
+            )
+            set_idle()
+            async_to_sync(channel_layer.group_send)(VOIP_GROUP, {
+                "type": "voip_event",
+                "event_type": "call_missed",
+                "payload": {"call_sid": call_sid}
+            })
 
     set_pending_timer(auto_reject, timeout=15)
     return True
@@ -102,7 +97,7 @@ def handle_incoming_call(call_sid, from_number):
 
 def hangup_call(call_sid):
     try:
-        get_twilio_client().calls(call_sid).update(status="completed")
+        twilio_client.calls(call_sid).update(status="completed")
     except Exception:
         pass
     log = CallLog.objects.filter(call_sid=call_sid).first()

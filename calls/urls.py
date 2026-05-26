@@ -6,6 +6,8 @@ urlpatterns = [
     path("token/", views.get_token, name="token"),
     path("call/start/", views.start_call, name="start_call"),
     path("call/end/", views.end_call, name="end_call"),
+    path("call/reset/", views.reset_state, name="reset_state"),
+
     path("call/logs/", views.call_logs, name="call_logs"),
     path("sms/inbox/", views.sms_inbox, name="sms_inbox"),
     path("webhooks/voice/incoming/", views.incoming_voice_webhook, name="incoming_voice"),

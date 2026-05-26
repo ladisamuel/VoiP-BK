@@ -1,8 +1,12 @@
+
 import os
 import time
 import threading
 from twilio.rest import Client
-from twilio.request_validator import RequestValidator  # type: ignore
+from twilio.request_validator import RequestValidator
+
+twilio_client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
+validator = RequestValidator(os.getenv("TWILIO_AUTH_TOKEN"))
 
 _system_lock = threading.Lock()
 _system_state = {
@@ -17,50 +21,10 @@ _system_state = {
 
 VOIP_GROUP = "voip_user"
 
-_twilio_client = None
-_validator = None
-
-
-def _get_auth_token():
-    token = os.getenv("TWILIO_AUTH_TOKEN")
-    if not token:
-        raise RuntimeError("TWILIO_AUTH_TOKEN not set")
-    return token
-
-
-def _get_account_sid():
-    sid = os.getenv("TWILIO_ACCOUNT_SID")
-    if not sid:
-        raise RuntimeError("TWILIO_ACCOUNT_SID not set")
-    return sid
-
-
-def get_twilio_client():
-    global _twilio_client
-    if _twilio_client is None:
-        _twilio_client = Client(_get_account_sid(), _get_auth_token())
-    return _twilio_client
-
-
-def get_validator():
-    global _validator
-    if _validator is None:
-        _validator = RequestValidator(_get_auth_token())
-    return _validator
-
 
 def get_state():
     with _system_lock:
         return dict(_system_state)
-
-
-def force_reset():
-    with _system_lock:
-        _cancel_pending_timer()
-        _system_state["status"] = "online"
-        _system_state["current_call_sid"] = None
-        _system_state["pending_call_sid"] = None
-        _system_state["pending_from_number"] = None
 
 
 def update_presence(browser_connected=True):
@@ -82,7 +46,6 @@ def set_busy(call_sid):
 
 def set_ringing(call_sid, from_number=None):
     with _system_lock:
-        _cancel_pending_timer()
         _system_state["status"] = "ringing"
         _system_state["pending_call_sid"] = call_sid
         _system_state["pending_from_number"] = from_number
@@ -118,10 +81,6 @@ def can_initiate_call():
     if state["status"] == "busy":
         return False, "System is busy"
     if state["status"] == "ringing":
-        # Auto-reset if ringing for too long (orphaned state)
-        if time.time() - state["last_seen"] > 60:
-            force_reset()
-            return True, "OK (auto-reset)"
         return False, "Call already ringing"
     if not state["browser_connected"]:
         return False, "Browser not connected"
@@ -133,10 +92,6 @@ def can_initiate_call():
 def can_receive_call():
     state = get_state()
     if state["status"] in ("busy", "ringing"):
-        # Auto-reset if stale
-        if time.time() - state["last_seen"] > 60:
-            force_reset()
-            return True, "OK (auto-reset)"
         return False, "System is busy"
     if not state["browser_connected"]:
         return False, "Browser offline"
@@ -149,4 +104,4 @@ def validate_twilio_request(request):
     url = request.build_absolute_uri()
     signature = request.META.get("HTTP_X_TWILIO_SIGNATURE", "")
     post_vars = request.POST.dict() if hasattr(request.POST, "dict") else dict(request.POST)
-    return get_validator().validate(url, post_vars, signature)
+    return validator.validate(url, post_vars, signature)

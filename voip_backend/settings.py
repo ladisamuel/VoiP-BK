@@ -36,7 +36,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "channels",
-    "calls",
+    # "calls",
+    "calls.apps.CallsConfig",
     
     "drf_spectacular",
 

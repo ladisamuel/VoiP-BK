@@ -3,14 +3,29 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env_path = BASE_DIR / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+else:
+    load_dotenv()
+
+
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-production-min-50-chars-long-for-security")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME", '')
+
 ALLOWED_HOSTS = ["*"]
+
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
 
 INSTALLED_APPS = [
     "daphne",
